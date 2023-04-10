@@ -1,3 +1,7 @@
+'''
+Reference:
+	https://github.com/THUwangcy/ReChorus
+'''
 # -*- coding: UTF-8 -*-
 
 import os
@@ -13,12 +17,6 @@ def df2dict(df: pd.DataFrame, df_train=[],max_session_len=-1) -> dict:
 	if len(df_train):
 		dict_train = df_train.to_dict('list')
 	for key in res:
-		# if key[-2:]=="_c" and 'id' not in key: # category, and not user id, item id, or session id
-		#	 if len(df_train):
-		#		 all_x = res[key] + dict_train[key]
-		#		 res[key] = pd.get_dummies(all_x).to_numpy().astype(int)[:len(res[key]),:]
-		#	 else:
-		#		 res[key] = pd.get_dummies(res[key]).to_numpy().astype(int)
 		if key[-2:]=="_s":
 			if max_session_len==-1:
 				res[key] = [eval(str(x)) for x in res[key]]

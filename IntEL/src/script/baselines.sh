@@ -1,32 +1,32 @@
 cd ../
 DATAPATH=../../../../data_new_0109
-DATANAME=All_deepfm_0109_300cate_len30
-# single sort (√)
+DATANAME=Tmall
+# single sort
 python3 main.py --save_anno single_click --datapath $DATAPATH --dataset $DATANAME --runner_name BaseRunner --model_name SingleSort --batch_size 512 --num_workers 4 --gpu 2 --train 0 --topk 1,3,5,10 --regenerate 0 --max_session_len 100 --intent_note _multi --model_num 3 --choose_list pCTR
 python3 main.py --save_anno single_fav --datapath $DATAPATH --dataset $DATANAME --runner_name BaseRunner --model_name SingleSort --batch_size 512 --num_workers 4 --gpu 2 --train 0 --topk 1,3,5,10 --regenerate 0 --max_session_len 100 --intent_note _multi --model_num 3 --choose_list pFVR
 python3 main.py --save_anno single_buy --datapath $DATAPATH --dataset $DATANAME --runner_name BaseRunner --model_name SingleSort --batch_size 512 --num_workers 4 --gpu 2 --train 0 --topk 1,3,5,10 --regenerate 0 --max_session_len 100 --intent_note _multi --model_num 3 --choose_list pCVR
 
-# RRA (√)
+# RRA
 python3 main.py --save_anno RRA --runner_name BaseRunner --datapath $DATAPATH --dataset $DATANAME --model_name RRA --batch_size 512 --train 0 --num_workers 4 --gpu 2 --topk 1,3,5,10 --regenerate 0 --max_session_len 100 --intent_note _multi --model_num 3
 
-# Borda (√)
+# Borda
 python3 main.py --save_anno Borda --runner_name BaseRunner --datapath $DATAPATH --dataset $DATANAME --model_name Borda --batch_size 512 --train 0 --num_workers 4 --gpu 2 --topk 1,3,5,10 --regenerate 0 --max_session_len 100 --intent_note _multi --model_num 3
 
-# Lambda-Rank (√)
+# Lambda-Rank
 seed_list=( 1 2 3 4 5 )
 for seed in ${seed_list[@]}
 do
 python3 main.py --random_seed ${seed} --save_anno lambdaRank_seed${seed} --datapath $DATAPATH --dataset $DATANAME --model_name LambdaRank --lr 2e-4 --runner_name LambdaRankRunner --batch_size 512 --num_workers 4 --gpu 2 --train 1 --topk 3,1,5,10 --main_metric NDCG@3 --max_session_len 100 --intent_note _multi --model_num 3 --hidden_size 128
 done
 
-# ERA (tmux 2)
+# ERA
 seed_list=( 1 2 3 4 5)
 for seed in ${seed_list[@]}
 do
 python3 ERARunner.py --random_seed ${seed} --datapath $DATAPATH --dataset $DATANAME --intent_note _multi --max_session_len 100 --save_anno ERA_${i} --num_generations 10 --num_solutions 100 --num_parents_mating 5 --crossover_prob 0.65 --mutation_prob 0.25 --elitism 2 --gpu 3 --model_num 3 --topk 3,1,5,10 --main_metric NDCG@3
 done
 
-# aWELv (√)
+# aWELv
 seed_list=( 1 2 3 4 5 )
 for seed in ${seed_list[@]}
 do

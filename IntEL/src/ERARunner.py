@@ -328,9 +328,9 @@ if __name__ == '__main__':
 		log_args.append(arg + '=' + str(eval('args.' + arg)))
 	log_file_name = '__'.join(log_args).replace(' ', '__')
 	if args.log_file == '':
-		args.log_file = '../log_intent/{}/{}/model.txt'.format(init_args.model_name, log_file_name)
+		args.log_file = '../logs/{}/{}/model.txt'.format(init_args.model_name, log_file_name)
 	if args.model_path == '':
-		args.model_path = '../model_intent/{}/{}/model.pt'.format(init_args.model_name, log_file_name)
+		args.model_path = '../models/{}/{}/model.pt'.format(init_args.model_name, log_file_name)
 	utils.check_dir(args.log_file)
 	utils.check_dir(args.model_path)
 	reload(logging)
