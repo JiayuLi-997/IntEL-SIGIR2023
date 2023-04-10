@@ -34,7 +34,7 @@ class BaseRunner(object):
 							help='Weight decay for intent module in optimizer.')
 		parser.add_argument('--batch_size', type=int, default=256,
 							help='Batch size during training.')
-		parser.add_argument('--eval_batch_size', type=int, default=256,
+		parser.add_argument('--eval_batch_size', type=int, default=100,
 							help='Batch size during testing.')
 		parser.add_argument('--optimizer', type=str, default='Adam',
 							help='optimizer: SGD, Adam, Adagrad, Adadelta')
@@ -191,7 +191,7 @@ class BaseRunner(object):
 		model = data_dict['train'].model
 		main_metric_results, dev_results = list(), list()
 		self._check_time(start=True)
-		writer = SummaryWriter('../log_intent/tensorboard_log/%s'%(save_anno))
+		writer = SummaryWriter('../logs/tensorboard_log/%s'%(save_anno))
 		try:
 			dev_loss, dev_result = self.evaluate(data_dict['dev'], self.topk[:1], self.metrics,criterion,topk_intent=[5])
 			logging_str = 'Epoch 0	dev loss={:<.4f}, ({})'.format(dev_loss, utils.format_metric(dev_result))

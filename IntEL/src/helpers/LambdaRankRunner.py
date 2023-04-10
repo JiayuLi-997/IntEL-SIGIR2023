@@ -33,7 +33,7 @@ class LambdaRankRunner(object):
 							help='The number of epochs when dev results drop continuously.')
 		parser.add_argument('--batch_size', type=int, default=256,
 							help='Batch size during training.')
-		parser.add_argument('--eval_batch_size', type=int, default=256,
+		parser.add_argument('--eval_batch_size', type=int, default=100,
 							help='Batch size during testing.')
 		parser.add_argument('--num_workers', type=int, default=4,
 							help='Number of processors when prepare batches in DataLoader')
@@ -240,19 +240,10 @@ class LambdaRankRunner(object):
 			session_lens = batch['session_len']
 			true_scores = batch['ranking']
 			true_scores = torch.clamp(true_scores,min=0)
-			# true_scores[np.where(true_scores<0)]=0
 
 			out_dict = model(batch)
 			predicted_scores = out_dict['ens_score'] # batch * length
 
-			# 改为矩阵计算！
-			# pred_score = predicted_scores.detach().cpu().numpy()
-			# lambdas = np.zeros_like(pred_score)
-			# zip_parameters = zip(true_scores.cpu().numpy(), pred_score, session_lens.cpu().numpy())
-			# for bid,(ts, ps, sl) in enumerate(zip_parameters):
-			# 	sub_lambda, sub_w = self.compute_lambda(ts, ps, sl, true_scores, predicted_scores.detach(), session_lens, bid) # 得到该query下document的lambda
-			# 	lambdas[bid,:sl] = sub_lambda[:sl]
-			# 	lambda_mean.append(sub_lambda[:sl].mean())
 			lambdas_torch = self.compute_lambda_new(true_scores,predicted_scores.detach(),session_lens)
 			if torch.isnan(lambdas_torch).sum():
 				print("NAN!")
@@ -267,18 +258,10 @@ class LambdaRankRunner(object):
 			lambda_mean.append(lambdas_torch.mean().cpu().detach().numpy())
 
 			model.zero_grad()
-			# lambdas_torch = torch.Tensor(lambdas).to(model.device)
 			predicted_scores.backward(lambdas_torch, retain_graph=True)
 			with torch.no_grad():
 				for param in model.parameters():
 					param.data.add_(param.grad.data * self.learning_rate)
-					# inputs = ''
-					# while inputs != 'continue':
-					# 	try:
-					# 		print(eval(inputs))
-					# 	except Exception as e:
-					# 		print(e)
-					# 	inputs = input()
 
 		return np.mean(lambda_mean)
 
@@ -289,7 +272,6 @@ class LambdaRankRunner(object):
 		for dtype in dataset.corpus.pos_types:
 			pos_num[dtype] = dataset.data[dtype]
 		evaluate_metrics = dict()
-		# if 0: # test ensemble results
 		evaluate_metrics.update(self.evaluate_method(prediction_scores, ranking_lists,pos_num, topk, metrics, dataset.data['session_len'],show_num=show_num))
 		if len(true_intent): # test intent prediction results
 			evaluate_metrics.update(self.evaluate_intents(true_intent,predict_intent))
@@ -331,19 +313,6 @@ class LambdaRankRunner(object):
 			return True
 		return False
 
-		
-	def get_pairs(self,scores):
-		"""
-		:param scores: given score list of documents for a particular query
-		:return: the documents pairs whose firth doc has a higher value than second one.
-		"""
-		pairs = []
-		for i in range(len(scores)):
-			for j in range(len(scores)):
-				if scores[i] > scores[j]:
-					pairs.append((i, j))
-		return pairs
-
 	def compute_lambda_new(self, true_scores, temp_scores, session_len):
 		batch_size, max_lens = true_scores.shape
 		device = true_scores.device
@@ -375,99 +344,7 @@ class LambdaRankRunner(object):
 
 		return Lambda # Avoid large gradient, leading to inf/nan in output
 
-	def compute_lambda(self,true_scores, temp_scores, session_len, true_scores_torch, temp_scores_torch, session_len_torch,
-				bid):
-		"""
-		:param true_scores: the score list of the documents for the query
-		:param temp_scores: the predict score list of the these documents
-		:return:
-			lambdas: changed lambda value for these documents
-			w: w value
-		"""
-		try:
-			order_pairs = self.get_pairs(true_scores[:session_len])
-			doc_num = len(true_scores)
-			lambdas = np.zeros(doc_num)
-			w = np.zeros(doc_num)
-			IDCG = idcg(true_scores[:session_len]) # ideal
-			single_dcgs = {}
-			delta_all = {}
-			for i, j in order_pairs: # pair中每一对
-				if (i, i) not in single_dcgs:
-					single_dcgs[(i, i)] = single_dcg(true_scores, i, i) # 第i个document排在第i个位置时的dcg
-				if (j, j) not in single_dcgs:
-					single_dcgs[(j, j)] = single_dcg(true_scores, j, j) # 第j个document排在第j个位置时的dcg
-				single_dcgs[(i, j)] = single_dcg(true_scores, i, j) # 第i个document与第j个document互换后的dcg
-				single_dcgs[(j, i)] = single_dcg(true_scores, j, i)
-
-			for i, j in order_pairs:
-				delta = abs(single_dcgs[(i,j)] + single_dcgs[(j,i)] - single_dcgs[(i,i)] -single_dcgs[(j,j)])/IDCG # 互换后的delta
-				rho = 1 / (1 + np.exp(temp_scores[i] - temp_scores[j]))
-				delta_all[(i,j)] = (delta, rho)
-				lambdas[i] += rho * delta # 第i个document的labmda值（量化了一个待排序的文档在下一次迭代时应该调整的方向和强度）
-				lambdas[j] -= rho * delta
-
-				rho_complement = 1.0 - rho
-				w[i] += rho * rho_complement * delta  # 第i个document的偏导数
-				w[j] -= rho * rho_complement * delta
-			
-		except Exception as e:
-			logging.info(e)
-			inputs = ''
-			while inputs != 'continue':
-				try:
-					print(eval(inputs))
-				except Exception as e:
-					print(e)
-				inputs = input()
-
-		return lambdas, w 
-
-def dcg(scores):
-	"""
-	compute the DCG value based on the given score
-	:param scores: a score list of documents
-	:return v: DCG value
-	"""
-	v = 0
-	for i in range(len(scores)):
-		v += (np.power(2, scores[i]) - 1) / np.log2(i+2)  # i+2 is because i starts from 0
-	return v
 
 
-def idcg(scores):
-	"""
-	compute the IDCG value (best dcg value) based on the given score
-	:param scores: a score list of documents
-	:return:  IDCG value
-	"""
-	best_scores = sorted(scores)[::-1]
-	return dcg(best_scores)
-
-def single_dcg(scores, i, j):
-	"""
-	compute the single dcg that i-th element located j-th position
-	:param scores:
-	:param i:
-	:param j:
-	:return:
-	"""
-	return (np.power(2, scores[i]) - 1) / np.log2(j+2)
-
-def ndcg(scores):
-	"""
-	compute the NDCG value based on the given score
-	:param scores: a score list of documents
-	:return:  NDCG value
-	"""
-	return dcg(scores)/idcg(scores)
-
-def ndcg_k(scores, k):
-	scores_k = scores[:k]
-	dcg_k = dcg(scores_k)
-	idcg_k = dcg(sorted(scores)[::-1][:k])
-	if idcg_k == 0:
-		return np.nan
-	return dcg_k/idcg_k
 
 

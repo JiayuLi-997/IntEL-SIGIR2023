@@ -120,7 +120,6 @@ def main():
 		except: # no criterion for Lambda Rank
 			test_evals = runner.evaluate(data_dict[phase],runner.topk,runner.metrics,show_num=True,phase=phase)
 			logging.info("%s metrics: %s"%(phase,utils.format_metric(test_evals)))
-		logging.info("%s loss= %.4f, metrics: %s "%(phase,test_loss,utils.format_metric(test_evals)))
 
 
 if __name__ == "__main__":
