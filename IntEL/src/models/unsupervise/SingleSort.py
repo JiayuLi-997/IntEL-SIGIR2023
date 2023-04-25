@@ -1,4 +1,6 @@
-from email.policy import default
+'''
+Evaluate basic model score
+'''
 import torch.nn as nn
 import torch
 import torch.nn.functional as F

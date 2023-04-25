@@ -10,6 +10,7 @@ class BPRloss(BaseIntloss):
 		super().__init__(args)
 
 	def diversity(self,ens_diff,base_diff,weights,select_mask,rankings):
+		# calculate diversity for BPR loss
 		sig_z = ens_diff.sigmoid() * (1-ens_diff.sigmoid())
 		z_diff = ( sig_z.unsqueeze(3) * (base_diff - ens_diff.unsqueeze(3))**2 * select_mask.unsqueeze(3) ).sum(dim=2)
 		A_mn = (z_diff * weights).sum(dim=-1) * (rankings>0)

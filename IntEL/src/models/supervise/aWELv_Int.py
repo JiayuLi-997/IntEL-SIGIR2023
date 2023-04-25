@@ -59,7 +59,7 @@ class aWELv_Int(GeneralSeq.GeneralSeq):
 			raise ValueError('Invalid sequence encoder.')
 		self.pred_layer = nn.Linear(
 					self.intent_pred_size+self.his_item_dim+
-					args.context_emb_size+args.user_emb_size,#+args.intent_emb_size+args.intent_emb_size
+					args.context_emb_size+args.user_emb_size,
 					self.intent_num)
 
 	def predict_intent(self,data):
@@ -83,8 +83,8 @@ class aWELv_Int(GeneralSeq.GeneralSeq):
 		his_item_vector = self.item_encoder(his_item_embedding,data['history_item_len'])
 
 		# other current embeddings
-		context_emb = self.context_embeddings(current_context)#.unsqueeze(1).repeat(1,history_intents.size(-1),1) # batchsize * intent num * embedding dim
-		user_emb = self.uid_embeddings(data['u_id_c'])#.unsqueeze(1).repeat(1,history_intents.size(-1),1) # batch size * embedding dim
+		context_emb = self.context_embeddings(current_context)
+		user_emb = self.uid_embeddings(data['u_id_c'])
 		
 		current_embeddings = torch.cat([context_emb,user_emb],dim=-1) # batch size * intent num * embedding dim
 
@@ -95,7 +95,7 @@ class aWELv_Int(GeneralSeq.GeneralSeq):
 
 	def forward(self,data):
 		user_id, item_list = data['u_id_c'], data['i_id_s']
-		item_metadata, score_list = data['i_class_c'], data['scores'].float()#, data['intents'].float()
+		item_metadata, score_list = data['i_class_c'], data['scores'].float()
 		model_num = score_list.size(2) # batch * list_length * base_num
 		intent = self.predict_intent(data)
 

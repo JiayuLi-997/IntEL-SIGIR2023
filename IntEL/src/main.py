@@ -108,11 +108,7 @@ def main():
 	else:
 		phase_list=['dev','test']
 	for phase in phase_list:
-		pos_nums = dict()
-		for btype in data_dict[phase].corpus.pos_types:
-			pos_nums[btype] = data_dict[phase].data[btype]
-		session_len = data_dict[phase].data['session_len']
-		sample = True if phase=='train' else False
+		sample = True if phase=='train' else False # sample part of train for evaluating
 		try:
 			test_loss, test_evals = runner.evaluate(data_dict[phase],runner.topk,runner.metrics,criterion, 
 							sample=sample,show_num=True,phase=phase)

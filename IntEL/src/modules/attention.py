@@ -1,11 +1,10 @@
-# coding=utf-8
+"""
+Reference to HappyRec Repo
+"""
+#  coding=utf-8
 
 import torch
 import numpy as np
-
-"""
-from HappyRec
-"""
 
 def single_query_att_func(q, k, v, valid=None, scale=None):
 	"""

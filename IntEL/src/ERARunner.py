@@ -1,7 +1,7 @@
 '''
 Specific runner for ERA method.
 Reference:
-	Samuel Oliveira, Victor Diniz, Anisio Lacerda, and Gisele L Pappa. 2016. Evolu-tionary rank aggregation for recommender systems. 
+	Samuel Oliveira, Victor Diniz, Anisio Lacerda, and Gisele L Pappa. 2016. Evolutionary rank aggregation for recommender systems. 
 	IEEE Congress on Evolutionary Computation (CEC). IEEE, 255–262.
 '''
 # -*- coding: UTF-8 -*-
@@ -45,11 +45,11 @@ def evaluate_method(prediction_scores,ranking_lists,pos_nums,topk,metrics, sessi
 	predictions = np.array([prediction_scores[i][:session_len[i]].tolist()+[0]*(max_len-session_len[i])
 					if session_len[i] < len(prediction_scores[i]) else
 					prediction_scores[i].tolist() + [0] * (max_len-len(prediction_scores[i]))
-						for i in range(test_size)]) # 补齐list
+						for i in range(test_size)])
 	rankings = np.array([ranking_lists[i][:session_len[i]].tolist()+[-2]*(max_len-session_len[i]) 
 					if session_len[i] < len(ranking_lists[i]) else
 					ranking_lists[i].tolist() + [0] * (max_len-len(ranking_lists[i]))
-					for i in range(test_size)]) # 补齐list
+					for i in range(test_size)])
 	rankings_idxs = np.argsort(rankings,axis=1)[:,::-1]
 	rankings_first_idxs = np.arange(len(rankings)).reshape(-1,1)
 	rankings = rankings[rankings_first_idxs,rankings_idxs]
@@ -58,7 +58,7 @@ def evaluate_method(prediction_scores,ranking_lists,pos_nums,topk,metrics, sessi
 	sort_idx = predictions.argsort(axis=1)
 	discounts = 1/np.log2(np.arange(max_len)+2.0)
 
-	for btype, pos_num in pos_nums.items():
+	for btype, pos_num in pos_nums.items(): # evaluation on each behavior
 		behavior = btype.split("_")[1].split("num")[0]
 		if 'click' in btype:
 			all_pos = np.sum(np.array(list(pos_nums.values())),axis=0).reshape(-1,1)
@@ -89,7 +89,7 @@ def evaluate_method(prediction_scores,ranking_lists,pos_nums,topk,metrics, sessi
 	rankings = rankings[predictions_first_idxs,predictions_idxs]
 	rankings_perfect = np.sort(rankings,axis=1)[:,::-1]
 	predictions = predictions[predictions_first_idxs,predictions_idxs]
-	for k in topk:
+	for k in topk: # evaluate on all rankings
 		dcg = (rankings[:,:k] * discounts[:k]).sum(axis=1)
 		idcg = (rankings_perfect[:,:k]*discounts[:k]).sum(axis=1)
 		idcg[np.where(idcg==0)] = 1
@@ -136,6 +136,7 @@ def parse_runner_args(parser):
 	return parser
 
 def fitness_func(solution, sol_idx):
+	# fitness function for Evolutionary Algorithm
 	global val_ranking_list, val_pos_nums, val_session_lens, val_inputs, model
 	predictions = pygad.torchga.predict(model=model,
 									solution=solution,
@@ -158,6 +159,7 @@ def train(data_dict, args):
 	num_parents_mating = args.num_parents_mating
 	initial_population = torch_ga.population_weights
 
+	# call for a GA
 	ga_instance = pygad.GA(num_generations=num_generations,
 					   num_parents_mating=num_parents_mating,
 					   initial_population=initial_population,
@@ -297,9 +299,6 @@ def main():
 	topk = [int(x) for x in args.topk.split(",")]
 	metrics = [x for x in args.metrics.split(",")]
 	for phase in ['dev','test']:
-		pos_nums = dict()
-		for btype in data_dict[phase].corpus.pos_types:
-			pos_nums[btype] = data_dict[phase].data[btype]
 		session_len = data_dict[phase].data['session_len']
 		test_evals = evaluate(solution, data_dict[phase],topk,metrics, 
 							show_num=True,phase=phase)

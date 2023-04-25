@@ -55,11 +55,11 @@ class LambdaRankRunner(object):
 		predictions = np.array([prediction_scores[i][:session_len[i]].tolist()+[0]*(max_len-session_len[i])
 			if session_len[i]<len(prediction_scores[i]) else 
 			prediction_scores[i].tolist()+[0]*(max_len-len(prediction_scores[i]))
-		 for i in range(test_size)]) # 补齐list
+		 for i in range(test_size)]) 
 		rankings = np.array([ranking_lists[i][:session_len[i]].tolist()+[-2]*(max_len-session_len[i]) 
 			if session_len[i]<len(ranking_lists[i]) else 
 			ranking_lists[i].tolist()+[-2]*(max_len-len(ranking_lists[i]))
-			 for i in range(test_size)]) # 补齐list
+			 for i in range(test_size)]) 
 
 		rankings_idxs = np.argsort(rankings,axis=1)[:,::-1]
 		rankings_first_idxs = np.arange(len(rankings)).reshape(-1,1)
@@ -154,7 +154,6 @@ class LambdaRankRunner(object):
 		self.topk = [int(x) for x in args.topk.split(',')]
 		self.metrics = [m.strip().upper() for m in args.metrics.split(',')]
 		self.main_metric = args.main_metric # early stop based on main_metric
-		# self.main_metric = '{}@{}'.format(self.metrics[0], self.topk[0]) 
 		self.stop_tol = 1e-4
 
 		self.time = None  # will store [start_time, last_step_time]

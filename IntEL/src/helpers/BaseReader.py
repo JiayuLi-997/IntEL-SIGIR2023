@@ -28,6 +28,12 @@ class BaseReader(object):
 		self.prefix = args.datapath
 		self.dataset = args.dataset
 		self.max_session_len = args.max_session_len
+		
+		self.cfeatures = ['c_time_i'] # define context features
+		self.ifeatures = ['i_class_c',] # define item metadata features
+		self.ufeatures = ['u_age_c','u_gender_c'] # define user metadata features
+		self.pos_types = ['c_paynum_i','c_favnum_i','c_clicknum_i',] # number of each feedback, sorted by pre-defined ranking
+		self.basic_scores = ['c_pCTR_s','c_pCVR_s','c_pFVR_s'] # basic model score features
 
 		self._read_inter()
 		self._read_meta()
@@ -40,7 +46,6 @@ class BaseReader(object):
 		self.interactions = dict()
 		self.all_df = []
 		max_uid, max_iid = 0,0
-		self.cfeatures = ['c_time_i'] # define context features
 		context_f = [set([0]) for f in self.cfeatures]
 		for phase in ['train','dev','test']:
 			logging.info("Reading data from %s set..."%(phase))
@@ -62,7 +67,6 @@ class BaseReader(object):
 		self.contextfnum =[max(len(c),max(c)+1) for c in context_f]
 		self.max_uid, self.max_iid = max_uid, max_iid
 		logging.info("#user: %d, #item %d"%(max_uid,max_iid))
-		self.pos_types = ['c_paynum_i','c_favnum_i','c_clicknum_i',] # number of each feedback, sorted by pre-defined ranking
 		self.all_df = pd.concat(self.all_df,ignore_index=True)
 
 	def _df2dict(self):
@@ -77,7 +81,6 @@ class BaseReader(object):
 	def _read_meta(self):
 		items = json.load(open(os.path.join(self.prefix,self.dataset,"item_metadata.json"))) 
 		self.itemmeta = {}
-		self.ifeatures = ['i_class_c',] # define item metadata features
 		feature_set = [set([0]) for f in self.ifeatures]
 		for key in items: 
 			self.itemmeta[int(key)] = np.array([items[key][f] for f in self.ifeatures]).astype(int)
@@ -88,7 +91,6 @@ class BaseReader(object):
 
 		users = json.load(open(os.path.join(self.prefix,self.dataset,"user_metadata.json")))
 		self.usermeta = {}
-		self.ufeatures = ['u_age_c','u_gender_c'] # define user metadata features
 		feature_set = [set([0]) for f in self.ufeatures]
 		for key in users:
 			self.usermeta[int(key)] = np.array([users[key][f] for f in self.ufeatures]).astype(int)

@@ -109,13 +109,9 @@ class BaseModel(nn.Module):
 				for i in tqdm(range(len(self)), leave=False, desc=('Prepare ' + self.phase)):
 					self.buffer_dict[i] = self._get_feed_dict(i)
 				
-				for key in ['i_id_s','c_pCTR_s','c_pCVR_s','c_pFVR_s']:
+				for key in ['i_id_s']+self.corpus.basic_scores:
 					self.data.pop(key)
 				gc.collect()
-
-		# Called before each training epoch (only for the training dataset)
-		def actions_before_epoch(self):
-			pass
 
 		# Collate a batch according to the list of feed dicts
 		def collate_batch(self, feed_dicts) -> dict:
@@ -134,10 +130,9 @@ class BaseModel(nn.Module):
 				else:
 					feed_dict[key] = torch.from_numpy(stack_val)
 			
-			feed_dict['scores'] = torch.stack([feed_dict['c_pCTR_s'],feed_dict['c_pCVR_s'],feed_dict['c_pFVR_s']],dim=2)
-			feed_dict.pop('c_pCTR_s')
-			feed_dict.pop('c_pCVR_s')
-			feed_dict.pop('c_pFVR_s')
+			feed_dict['scores'] = torch.stack([feed_dict[basic] for basic in self.corpus.basic_scores],dim=2)
+			for basic in self.corpus.basic_scores:
+				feed_dict.pop(basic)
 			feed_dict['batch_size'] = len(feed_dicts)
 			feed_dict['phase'] = self.phase
 			return feed_dict
@@ -168,7 +163,7 @@ class GeneralModel(BaseModel):
 				feed_dict['user_mh'] = feed_dict['user_mh']*self.corpus.userfnum[i] + self.corpus.usermeta[uid][i]
 			for i,key in enumerate(self.corpus.ifeatures): # item features
 				feed_dict[key] = np.array([self.corpus.itemmeta[iid][i] for iid in self.data['i_id_s'][index]])
-			for i,key in enumerate(['i_id_s','c_pCTR_s','c_pCVR_s','c_pFVR_s']): # sequence of item and base scores
+			for i,key in enumerate(['i_id_s']+self.corpus.basic_scores): # sequence of item and base scores
 				feed_dict[key] = np.array(self.data[key][index])
 				if key != 'i_id_s': # normalize the scores
 					feed_dict[key] = (feed_dict[key] - feed_dict[key].min()) / (feed_dict[key].max()-feed_dict[key].min()+1e-6)
@@ -193,6 +188,6 @@ class GeneralShuffleModel(GeneralModel):
 		def _get_feed_dict(self, index: int) -> dict:
 			feed_dict = super()._get_feed_dict(index)
 			idxs = np.random.choice(np.arange(feed_dict['session_len']),feed_dict['session_len'],replace=False).astype(int)
-			for i,key in enumerate(['i_id_s','c_pCTR_s','c_pCVR_s','c_pFVR_s','ranking',]+self.corpus.ifeatures): # shuffle all sequential features
+			for i,key in enumerate(['i_id_s','ranking',]+self.corpus.basic_scores+self.corpus.ifeatures): # shuffle all sequential features
 				feed_dict[key] = feed_dict[key][idxs]
 			return feed_dict

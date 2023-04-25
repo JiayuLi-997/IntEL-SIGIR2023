@@ -68,11 +68,11 @@ class BaseRunner(object):
 		predictions = np.array([prediction_scores[i][:session_len[i]].tolist()+[0]*(max_len-session_len[i])
 			if session_len[i]<len(prediction_scores[i]) else 
 			prediction_scores[i].tolist()+[0]*(max_len-len(prediction_scores[i]))
-		 for i in range(test_size)]) # 补齐list
+		 for i in range(test_size)]) 
 		rankings = np.array([ranking_lists[i][:session_len[i]].tolist()+[-2]*(max_len-session_len[i]) 
 			if session_len[i]<len(ranking_lists[i]) else 
 			ranking_lists[i].tolist()+[-2]*(max_len-len(ranking_lists[i]))
-			 for i in range(test_size)]) # 补齐list
+			 for i in range(test_size)]) 
 
 
 		rankings_idxs = np.argsort(rankings,axis=1)[:,::-1]
