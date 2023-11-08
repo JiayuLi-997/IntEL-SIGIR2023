@@ -103,6 +103,10 @@ class BaseModel(nn.Module):
 		def _get_feed_dict(self, index: int) -> dict:
 			pass
 
+		# Called before each training epoch (only for the training dataset)
+		def actions_before_epoch(self):
+			pass
+		
 		# Called after initialization
 		def prepare(self):
 			if self.model.buffer and self.phase != 'train':
