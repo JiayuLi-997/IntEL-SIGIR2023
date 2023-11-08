@@ -19,7 +19,7 @@ The implementation configs of all baseline models and our model IntEL are shown 
 ```
 cd ./IntEL/script/
 bash IntEL.sh
-base baselines.sh
+bash baselines.sh
 ```
 You can use self-defined configs and dataset by running `./IntEL/src/main.py`.
 ```
