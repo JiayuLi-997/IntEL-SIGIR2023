@@ -30,6 +30,7 @@ class IntEL(GeneralSeq.GeneralSeq):
 							help='Dropout probability for each deep layer')
 		parser.add_argument('--num_layers', type=int, default=1,
 							help='Number of self-attention layers.')
+		parser.add_argument('--cross_attention',type=int,default=1,help='Using cross-attention structure or direct attention.')
 		return GeneralSeq.GeneralSeq.parse_model_args(parser)
 
 	def __init__(self,args,corpus):
@@ -72,17 +73,24 @@ class IntEL(GeneralSeq.GeneralSeq):
 		# cross attention
 		self.act_func = nn.ReLU
 		self.cross_attn_qsize = args.cross_attn_qsize
-		self.intent_score_embeddings = nn.Sequential(
-					nn.Linear(self.intent_num, self.cross_attn_qsize),
-					self.act_func(),
-					nn.Linear(self.cross_attn_qsize, args.s_emb_size, bias=False)
-					)
-		
-		self.intent_item_embeddings = nn.Sequential(
-					nn.Linear(self.intent_num, self.cross_attn_qsize),
-					self.act_func(),
-					nn.Linear(self.cross_attn_qsize, self.item_emb_size, bias=False)
-					)
+		self.cross_attention = args.cross_attention
+		if self.cross_attention:
+			self.intent_score_attention = CrossAtt(input_qsize=self.intent_num, input_vsize=self.score_emb_size, 
+								query_size=self.score_emb_size,key_size=self.score_emb_size,value_size=self.score_emb_size)
+			self.intent_item_attention = CrossAtt(input_qsize=self.intent_num, input_vsize=self.item_emb_size, 
+								query_size=self.item_emb_size,key_size=self.item_emb_size,value_size=self.item_emb_size)
+		else:
+			self.intent_score_embeddings = nn.Sequential(
+						nn.Linear(self.intent_num, self.cross_attn_qsize),
+						self.act_func(),
+						nn.Linear(self.cross_attn_qsize, self.score_emb_size, bias=False)
+						)
+			
+			self.intent_item_embeddings = nn.Sequential(
+						nn.Linear(self.intent_num, self.cross_attn_qsize),
+						self.act_func(),
+						nn.Linear(self.cross_attn_qsize, self.item_emb_size, bias=False)
+						)
 		# weight
 		self.weight_embeddings = nn.Linear(self.item_emb_size+args.s_emb_size
 									+args.intent_emb_size+args.u_emb_size,args.model_num)
@@ -189,10 +197,16 @@ class IntEL(GeneralSeq.GeneralSeq):
 			h_s = self.s_layer_norm(h_s+residual)
 
 		# cross-attention
-		item_intent = self.intent_item_embeddings(h_int) # B * 1 * d_v
-		score_intent = self.intent_score_embeddings(h_int)
-		item_xatt = torch.mul(h_i,item_intent)
-		score_xatt = torch.mul(h_s,score_intent)
+		if self.cross_attention:
+			item_xatt, item_xatt_w = self.intent_item_attention(h_int,h_i,valid=valid_mask2,
+									scale=1/torch.sqrt(torch.tensor(self.cross_attn_qsize)),act_v=None)
+			score_xatt, score_xatt_w = self.intent_score_attention(h_int,h_s,valid=valid_mask2,
+									scale=1/torch.sqrt(torch.tensor(self.cross_attn_qsize)),act_v=None)
+		else:
+			item_intent = self.intent_item_embeddings(h_int) # B * 1 * d_v
+			score_intent = self.intent_score_embeddings(h_int)
+			item_xatt = torch.mul(h_i,item_intent)
+			score_xatt = torch.mul(h_s,score_intent)
 
 		# to weight
 		h_intent = F.relu(self.intent_embeddings(h_int).repeat(1,h_i.size(1),1))
@@ -223,3 +237,4 @@ class IntEL(GeneralSeq.GeneralSeq):
 			feed_dict['history_item_len'] = len(feed_dict['his_item_id'])
 
 			return feed_dict
+			
